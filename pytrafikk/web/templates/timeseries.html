@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Time Series Analysis - PyTrafikk</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">PyTrafikk</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/map">Map View</a>
+                <a class="nav-link active" href="/timeseries">Time Series</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Traffic Time Series Analysis</h2>
+        <form id="timeseriesForm" class="mb-4">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="station" class="form-label">Select Station</label>
+                    <select class="form-select" id="station" name="station" style="width: 100%">
+                        <option value="">Type to search stations...</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Interval</label>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="interval" id="hourly" value="hourly" checked>
+                        <label class="btn btn-outline-primary" for="hourly">Hourly</label>
+                        <input type="radio" class="btn-check" name="interval" id="daily" value="daily">
+                        <label class="btn btn-outline-primary" for="daily">Daily</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="datetime-local" class="form-control" id="start_date" name="start_date">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="datetime-local" class="form-control" id="end_date" name="end_date">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Plot</button>
+        </form>
+
+        <div id="error-alert" class="alert alert-danger d-none mb-3" role="alert">
+        </div>
+        
+        <div id="plot">
+            {{ plot_html | safe }}
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2
+            $('#station').select2({
+                ajax: {
+                    url: '/api/stations',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            q: params.term
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 2,
+                placeholder: 'Type to search stations...'
+            });
+
+            // Set default dates
+            const now = new Date();
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            $('#end_date').val(now.toISOString().slice(0, 16));
+            $('#start_date').val(yesterday.toISOString().slice(0, 16));
+
+            // Handle form submission
+            $('#timeseriesForm').on('submit', function(e) {
+                e.preventDefault();
+                const formData = {
+                    station: $('#station').val(),
+                    start_date: $('#start_date').val(),
+                    end_date: $('#end_date').val(),
+                    interval: $('input[name="interval"]:checked').val()
+                };
+
+                // Hide any existing error
+                $('#error-alert').addClass('d-none');
+                
+                $.get('/api/timeseries', formData)
+                    .done(function(response) {
+                        if (response.error) {
+                            $('#error-alert').removeClass('d-none').text(response.error);
+                            $('#plot').html('');
+                        } else {
+                            $('#plot').html(response.plot);
+                        }
+                    })
+                    .fail(function(jqXHR) {
+                        const errorMsg = jqXHR.responseJSON?.error || 'An unexpected error occurred';
+                        $('#error-alert').removeClass('d-none').text(errorMsg);
+                        $('#plot').html('');
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
