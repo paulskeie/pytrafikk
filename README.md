@@ -15,6 +15,14 @@ A Python client and web application for accessing Norwegian traffic data from th
 
 ## Installation
 
+### From PyPI (recommended)
+
+```bash
+pip install pytrafikk
+```
+
+### From Source
+
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/pytrafikk.git
@@ -54,24 +62,51 @@ from pytrafikk.client import (
 # API base URL
 BASE_URL = "https://trafikkdata-api.atlas.vegvesen.no/"
 
-# Get all European highway measurement points
-points = query_traffic_registration_points(BASE_URL, "E")
+# Get measurement points for different road categories
+e_roads = query_traffic_registration_points(BASE_URL, "E")  # European highways
+national = query_traffic_registration_points(BASE_URL, "R")  # National roads
+county = query_traffic_registration_points(BASE_URL, "F")   # County roads
 
-# Query hourly traffic volume for a point
+# Print some point details
+for point in e_roads[:3]:
+    print(f"Name: {point.name}")
+    print(f"ID: {point.id}")
+    print(f"Location: {point.location.coordinates.latLon.lat}, {point.location.coordinates.latLon.lon}\n")
+
+# Query hourly traffic volume for yesterday
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+oslo_tz = ZoneInfo("Europe/Oslo")
+yesterday = datetime.now(oslo_tz) - timedelta(days=1)
+start_time = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+end_time = start_time + timedelta(days=1)
+
 volumes = query_traffic_volume(
     BASE_URL,
     point_id="97411V72313",  # Example: E6 Mortenhals
-    from_time="2024-01-01T00:00:00+01:00",
-    to_time="2024-01-02T00:00:00+01:00"
+    from_time=start_time.isoformat(),
+    to_time=end_time.isoformat()
 )
 
-# Query daily traffic volume
+# Print hourly volumes
+for volume in volumes.volumes:
+    print(f"Time: {volume.from_time.strftime('%H:%M')} - {volume.to_time.strftime('%H:%M')}")
+    print(f"Vehicles: {volume.total}")
+    print(f"Coverage: {volume.coverage_percentage}%\n")
+
+# Get daily traffic for the last week
+week_start = start_time - timedelta(days=7)
 daily = query_traffic_volume_by_day(
     BASE_URL,
     point_id="97411V72313",
-    from_time="2024-01-01T00:00:00+01:00",
-    to_time="2024-01-07T00:00:00+01:00"
+    from_time=week_start.isoformat(),
+    to_time=end_time.isoformat()
 )
+
+# Calculate average daily traffic
+avg_traffic = sum(v.total for v in daily.volumes) / len(daily.volumes)
+print(f"Average daily traffic: {avg_traffic:.0f} vehicles")
 ```
 
 ## Development
