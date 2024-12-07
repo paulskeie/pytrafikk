@@ -25,7 +25,7 @@ pip install pytrafikk
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pytrafikk.git
+git clone https://github.com/paulskeie/pytrafikk.git
 cd pytrafikk
 
 # Create and activate a virtual environment
@@ -107,6 +107,26 @@ daily = query_traffic_volume_by_day(
 # Calculate average daily traffic
 avg_traffic = sum(v.total for v in daily.volumes) / len(daily.volumes)
 print(f"Average daily traffic: {avg_traffic:.0f} vehicles")
+
+# Query hourly traffic volume for a point
+volume_data = query_traffic_volume(
+    BASE_URL,
+    point_id="97411V72313",  # Example: E6 Mortenhals
+    from_time="2024-01-01T00:00:00+01:00",
+    to_time="2024-01-03T00:00:00+01:00"
+)
+
+# Create a DataFrame from the volume data
+df = pd.DataFrame([
+            {
+                'timestamp': v.from_time,
+                'volume': v.total,
+                'coverage': v.coverage_percentage,
+                'weekday': v.from_time.strftime('%A')
+            }
+            for v in volume_data.volumes
+        ])
+
 ```
 
 ## Development
